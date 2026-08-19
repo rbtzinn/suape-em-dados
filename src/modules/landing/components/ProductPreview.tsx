@@ -1,0 +1,16 @@
+import { landingMock } from "../data/landing.mock";
+
+const statusClass: Record<string, string> = { Conforme: "status status-ok", Atenção: "status status-attention", "Revisão necessária": "status status-review" };
+
+export function ProductPreview() {
+  return (
+    <div className="preview-shell animate-enter" aria-label="Prévia conceitual da plataforma com dados simulados">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3.5 sm:px-5"><div><p className="text-xs font-semibold tracking-[-0.01em]">Visão integrada</p><p className="mt-0.5 text-[11px] text-[var(--muted)]">Competência atual • visão de apoio</p></div><span className="mock-badge">Prévia conceitual • dados simulados</span></div>
+      <div className="grid grid-cols-2 border-b border-[var(--line)] lg:grid-cols-4">{landingMock.metrics.map((metric) => <div className="min-w-0 border-r border-[var(--line)] p-4 last:border-r-0" key={metric.label}><p className="truncate text-[10px] uppercase tracking-[0.08em] text-[var(--muted)]">{metric.label}</p><p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{metric.value}</p><p className="mt-1 text-[10px] text-[var(--muted)]">{metric.meta}</p></div>)}</div>
+      <div className="grid gap-0 lg:grid-cols-[0.86fr_1.14fr]">
+        <div className="border-b border-[var(--line)] p-4 sm:p-5 lg:border-b-0 lg:border-r"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-medium">Cobertura de evidências</p><p className="mt-1 text-[11px] text-[var(--muted)]">Evolução da amostra revisada</p></div><span className="text-sm font-semibold text-[var(--accent)]">91%</span></div><div className="mt-6 flex h-28 items-end gap-2" aria-label="Gráfico conceitual de evolução da cobertura de evidências">{landingMock.timeline.map((height, index) => <span className="data-bar flex-1" key={`${height}-${index}`} style={{ height: `${height}%`, animationDelay: `${index * 55}ms` }} />)}</div><div className="mt-3 flex justify-between text-[10px] text-[var(--muted)]"><span>Jan</span><span>Ago</span></div></div>
+        <div className="min-w-0 p-4 sm:p-5"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-medium">Pontos recentes para análise</p><p className="mt-1 text-[11px] text-[var(--muted)]">Situação exibida sem conclusão automática</p></div><span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">3 registros</span></div><div className="mt-4 divide-y divide-[var(--line)] border-y border-[var(--line)]">{landingMock.previewRows.map((row) => <div className="grid grid-cols-[72px_1fr] gap-3 py-3 sm:grid-cols-[82px_1fr_auto] sm:items-center" key={row.id}><span className="text-xs font-semibold tabular-nums">{row.id}</span><span className="truncate text-xs text-[var(--ink-soft)]">{row.check}</span><span className={`${statusClass[row.status]} col-span-2 justify-self-start sm:col-span-1`}>{row.status}</span></div>)}</div><div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-[var(--muted)]"><span>Fonte e motivo visíveis em cada resultado</span><span className="font-semibold text-[var(--accent)]">Rastreável</span></div></div>
+      </div>
+    </div>
+  );
+}
