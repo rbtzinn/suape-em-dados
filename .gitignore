@@ -1,0 +1,25 @@
+﻿node_modules/
+.next/
+
+.env
+.env.local
+.env.*.local
+
+# Skills locais
+.skills/
+
+# Dados institucionais
+data/
+uploads/
+private/
+pdfs/
+imports/
+
+*.pdf
+*.xlsx
+*.xls
+*.csv
+
+# Sistema
+.DS_Store
+Thumbs.db
