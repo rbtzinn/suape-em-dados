@@ -1,19 +1,25 @@
-﻿node_modules/
+node_modules/
 .next/
+out/
+coverage/
+*.tsbuildinfo
 
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Skills locais
 .skills/
 
-# Dados institucionais
-data/
+# Dados institucionais recebidos (a pasta de código src/data é versionada)
+/data/
 uploads/
 private/
 pdfs/
 imports/
+generated-data/
 
 *.pdf
 *.xlsx
