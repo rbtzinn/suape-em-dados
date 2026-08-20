@@ -1,15 +1,15 @@
 import type { Workbook, Worksheet } from "exceljs";
 
 import { normalizeText } from "@/domain/normalization";
-import type { ImportModule } from "./types";
+import type { WorkbookImportModule } from "./types";
 
 interface HeaderCandidate {
-  module: ImportModule;
+  module: WorkbookImportModule;
   rowNumber: number;
   score: number;
 }
 
-const KEYWORDS: Record<ImportModule, string[]> = {
+const KEYWORDS: Record<WorkbookImportModule, string[]> = {
   REMESSA: [
     "id do ij",
     "instrumento juridico",
@@ -37,7 +37,11 @@ function normalizedCell(value: unknown): string {
     .trim();
 }
 
-function scoreRow(worksheet: Worksheet, rowNumber: number, module: ImportModule): number {
+function scoreRow(
+  worksheet: Worksheet,
+  rowNumber: number,
+  module: WorkbookImportModule,
+): number {
   const row = worksheet.getRow(rowNumber);
   const cells = Array.from({ length: Math.max(row.cellCount, 1) }, (_, index) =>
     normalizedCell(row.getCell(index + 1).text),
@@ -62,8 +66,8 @@ export function detectSheetHeader(worksheet: Worksheet): HeaderCandidate | null 
   return best && best.score >= 4 ? best : null;
 }
 
-export function detectWorkbookModule(workbook: Workbook): ImportModule {
-  const totals = new Map<ImportModule, number>([
+export function detectWorkbookModule(workbook: Workbook): WorkbookImportModule {
+  const totals = new Map<WorkbookImportModule, number>([
     ["REMESSA", 0],
     ["LAI", 0],
   ]);

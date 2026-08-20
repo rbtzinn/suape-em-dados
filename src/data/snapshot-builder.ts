@@ -1,5 +1,6 @@
 import { parseBoolean, parseInteger } from "@/domain/normalization";
 import type {
+  CommissionMatchSummary,
   ContractSummary,
   ImportSource,
   PayrollCategory,
@@ -33,6 +34,9 @@ export const SNAPSHOT_SHEETS = [
   "travel",
   "travel_rule_results",
   "data_quality_issues",
+  "cpl_ordinances",
+  "cpl_members",
+  "cpl_fiscal_matches",
 ] as const satisfies readonly CanonicalSheetName[];
 
 export function emptySnapshot(meta: SystemSnapshot["meta"]): SystemSnapshot {
@@ -86,6 +90,18 @@ export function emptySnapshot(meta: SystemSnapshot["meta"]): SystemSnapshot {
       totalCents: 0,
       destinations: 0,
       examples: [],
+    },
+    commissions: {
+      ordinances: 0,
+      members: 0,
+      presidents: 0,
+      matchedPeople: 0,
+      ok: 0,
+      attention: 0,
+      review: 0,
+      potentialConflict: 0,
+      examples: [],
+      byCommission: [],
     },
     imports: [],
   };
@@ -212,6 +228,28 @@ function travelExamples(rows: SheetRow[], results: SheetRow[]): TravelExample[] 
   }));
 }
 
+const CPL_LABELS: Record<string, string> = {
+  OK: "OK",
+  ATENCAO: "Atenção",
+  POTENCIAL_CONFLITO: "Potencial conflito",
+  REVISAO_NECESSARIA: "Revisão necessária",
+};
+
+function commissionExamples(rows: SheetRow[]): CommissionMatchSummary[] {
+  return rows.map((row) => ({
+    id: row.match_id,
+    person: row.person_name || "Pessoa não informada",
+    commission: row.commission_name || "Comissão não informada",
+    commissionRole: row.commission_role || "Membro",
+    instrument: row.instrument_id || row.contract_number || "Sem correspondência no Remessa",
+    contractRole: row.contract_role || "Sem papel contratual correspondente",
+    score: Number(row.person_match_score || 0),
+    status: CPL_LABELS[row.decision] || row.decision || "Não classificado",
+    reasons: parseReasons(row.match_reasons_json),
+    validity: row.contract_validity_raw || "Vigência não aplicável",
+  }));
+}
+
 const MODULE_LABELS: Record<string, string> = {
   REMESSA: "Contratos · Remessa",
   LAI: "Contratos · LAI",
@@ -292,6 +330,16 @@ export function buildFromWorkbook(workbook: CanonicalWorkbook): SystemSnapshot {
     ),
   );
   const travelResults = publishedRows(workbook, "travel_rule_results", published);
+  const ordinances = publishedRows(workbook, "cpl_ordinances", published);
+  const members = publishedRows(workbook, "cpl_members", published);
+  const matchHistory = workbook.cpl_fiscal_matches ?? [];
+  const latestCplRun = matchHistory
+    .filter((row) => row.match_run_id)
+    .sort((left, right) => left.generated_at.localeCompare(right.generated_at))
+    .at(-1)?.match_run_id;
+  const cplMatches = latestCplRun
+    ? matchHistory.filter((row) => row.match_run_id === latestCplRun)
+    : matchHistory;
   const snapshot = emptySnapshot({
     mode: "sheets",
     updatedAt: updatedLabel(batches),
@@ -366,6 +414,38 @@ export function buildFromWorkbook(workbook: CanonicalWorkbook): SystemSnapshot {
     totalCents: sum(travel, "trip_total_cents"),
     destinations: unique(travel, "destination_city"),
     examples: travelExamples(travel, travelResults),
+  };
+  const ordinanceById = new Map(ordinances.map((row) => [row.ordinance_id, row]));
+  const commissionGroups = groupRows(
+    members.map((row) => ({
+      ...row,
+      commission_name: ordinanceById.get(row.ordinance_id)?.commission_name ?? "Não informada",
+    })),
+    "commission_name",
+  );
+  snapshot.commissions = {
+    ordinances: ordinances.length,
+    members: members.length,
+    presidents: members.filter((row) => row.commission_role === "PRESIDENTE").length,
+    matchedPeople: unique(
+      cplMatches.filter((row) => Boolean(row.remessa_record_id)),
+      "cpl_assignment_id",
+    ),
+    ok: cplMatches.filter((row) => row.decision === "OK").length,
+    attention: cplMatches.filter((row) => row.decision === "ATENCAO").length,
+    review: cplMatches.filter((row) => row.decision === "REVISAO_NECESSARIA").length,
+    potentialConflict: cplMatches.filter((row) => row.decision === "POTENCIAL_CONFLITO").length,
+    examples: commissionExamples(cplMatches),
+    byCommission: [...commissionGroups].map(([commission, commissionMembers]) => ({
+      commission,
+      members: commissionMembers.length,
+      attention: cplMatches.filter(
+        (row) => row.commission_name === commission && row.decision === "ATENCAO",
+      ).length,
+      review: cplMatches.filter(
+        (row) => row.commission_name === commission && row.decision === "REVISAO_NECESSARIA",
+      ).length,
+    })),
   };
   snapshot.imports = importSources(batches, quality);
   return snapshot;

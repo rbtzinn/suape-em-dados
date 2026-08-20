@@ -43,8 +43,8 @@ export function ImportSourceForm() {
     <form className="import-upload" onSubmit={submit}>
       <div className="import-form-grid">
         <div className="field">
-          <label htmlFor="import-file">Planilha de origem (.xlsx)</label>
-          <input id="import-file" name="file" type="file" accept=".xlsx" required />
+          <label htmlFor="import-file">Fonte de origem (.xlsx ou .pdf)</label>
+          <input id="import-file" name="file" type="file" accept=".xlsx,.pdf" required />
         </div>
         <div className="field">
           <label htmlFor="import-module">Tipo da fonte</label>
@@ -52,11 +52,12 @@ export function ImportSourceForm() {
             <option value="AUTO">Detectar automaticamente</option>
             <option value="LAI">LAI — contratos</option>
             <option value="REMESSA">Remessa TCE</option>
+            <option value="CPL">Portaria — CPL/comissão</option>
           </select>
         </div>
         <div className="field">
-          <label htmlFor="import-competence">Competência</label>
-          <input id="import-competence" name="competence" type="month" required />
+          <label htmlFor="import-competence">Competência da planilha</label>
+          <input id="import-competence" name="competence" type="month" />
         </div>
         <div className="field">
           <label htmlFor="import-drive-url">Link do original no Drive (opcional)</label>
@@ -66,9 +67,9 @@ export function ImportSourceForm() {
       <div className="import-submit-row">
         <button className="button button-primary" disabled={state === "loading"} type="submit">
           <Icon name="database" />
-          {state === "loading" ? "Lendo todas as colunas…" : "Importar para a base geral"}
+          {state === "loading" ? "Lendo a fonte integralmente…" : "Importar para a base geral"}
         </button>
-        <p>O mesmo SHA-256 não duplica dados. Linhas não reconhecidas continuam guardadas na camada bruta.</p>
+        <p>A competência é obrigatória para LAI/Remessa e inferida da vigência em portarias. O mesmo SHA-256 não duplica dados.</p>
       </div>
       {result?.message && (
         <div className={`import-result action-${state}`} role="status">

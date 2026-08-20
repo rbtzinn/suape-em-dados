@@ -1,7 +1,8 @@
 import type { CanonicalSheetName } from "@/infra/google-sheets/schema";
 import type { CanonicalWriteRow } from "@/infra/google-sheets/repository";
 
-export type ImportModule = "REMESSA" | "LAI";
+export type WorkbookImportModule = "REMESSA" | "LAI";
+export type ImportModule = WorkbookImportModule | "CPL";
 export type ImportModuleSelection = ImportModule | "AUTO";
 
 export interface SourceRow {
@@ -19,7 +20,7 @@ export interface SourceSheet {
 }
 
 export interface WorkbookExtraction {
-  module: ImportModule;
+  module: WorkbookImportModule;
   sheets: SourceSheet[];
 }
 
@@ -60,6 +61,13 @@ export interface ImportSummary {
     runId: string;
     rows: number;
     skipped: boolean;
+    warning?: string;
+  };
+  cplReconciliation?: {
+    runId: string;
+    rows: number;
+    attention: number;
+    review: number;
     warning?: string;
   };
 }

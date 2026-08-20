@@ -21,7 +21,7 @@ export default async function ImportsPage() {
     <>
       <PageHeader eyebrow="Administração" title="Importações e fontes" description="Controle de lotes, hashes, competência e proveniência. Uma nova carga acrescenta histórico em vez de apagar o mês anterior." />
       <SourceBanner meta={data.meta} />
-      <Panel title="Entrada da base geral" description="Anexe LAI ou Remessa; o importador detecta o cabeçalho, preserva todas as colunas e publica a camada normalizada">
+      <Panel title="Entrada da base geral" description="Anexe LAI, Remessa ou portaria em PDF; o importador preserva o conteúdo bruto e publica a camada normalizada">
         <ImportSourceForm />
       </Panel>
       <section className="metrics-grid">
@@ -62,7 +62,7 @@ export default async function ImportsPage() {
         </Panel>
       </div>
 
-      <div className="notice-box" style={{ marginTop: 17 }}><Icon name="warning" /><div><strong>Portarias da CPL</strong><p>As abas de portarias, membros, vínculos e cruzamento com fiscais do Remessa já fazem parte da base. A extração será habilitada com revisão humana quando os documentos forem enviados.</p></div></div>
+      <div className="notice-box" style={{ marginTop: 17 }}><Icon name="warning" /><div><strong>Cruzamento CPL × Remessa</strong><p>Coincidências de nome, papel e vigência geram atenção ou revisão humana. Ser membro de comissão, isoladamente, não é classificado como conflito.</p></div></div>
     </>
   );
 }

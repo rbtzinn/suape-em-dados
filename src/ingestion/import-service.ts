@@ -95,6 +95,9 @@ function validate(request: ImportRequest): void {
 
 export async function importWorkbook(request: ImportRequest): Promise<ImportSummary> {
   validate(request);
+  if (request.module === "CPL") {
+    throw new Error("Portarias CPL devem ser enviadas em PDF.");
+  }
   const sourceHash = sha256(request.bytes);
   await sheetsRepository.ensureCanonicalSchema();
   if (await sheetsRepository.hasSourceHash(sourceHash)) {

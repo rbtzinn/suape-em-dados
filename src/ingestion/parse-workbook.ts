@@ -3,13 +3,13 @@ import ExcelJS from "exceljs";
 import { extractSourceSheet } from "./cells";
 import { detectSheetHeader, detectWorkbookModule } from "./detect";
 import type {
-  ImportModuleSelection,
+  WorkbookImportModule,
   WorkbookExtraction,
 } from "./types";
 
 export async function extractWorkbook(
   bytes: Buffer,
-  selection: ImportModuleSelection,
+  selection: WorkbookImportModule | "AUTO",
 ): Promise<WorkbookExtraction> {
   const workbook = new ExcelJS.Workbook();
   const arrayBuffer = bytes.buffer.slice(

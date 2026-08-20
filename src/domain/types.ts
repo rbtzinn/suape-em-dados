@@ -64,6 +64,26 @@ export interface TravelExample {
   status: string;
 }
 
+export interface CommissionMatchSummary {
+  id: string;
+  person: string;
+  commission: string;
+  commissionRole: string;
+  instrument: string;
+  contractRole: string;
+  score: number;
+  status: string;
+  reasons: string[];
+  validity: string;
+}
+
+export interface CommissionBreakdown {
+  commission: string;
+  members: number;
+  attention: number;
+  review: number;
+}
+
 export interface ImportSource {
   name: string;
   competence: string;
@@ -117,6 +137,18 @@ export interface SystemSnapshot {
     totalCents: number;
     destinations: number;
     examples: TravelExample[];
+  };
+  commissions: {
+    ordinances: number;
+    members: number;
+    presidents: number;
+    matchedPeople: number;
+    ok: number;
+    attention: number;
+    review: number;
+    potentialConflict: number;
+    examples: CommissionMatchSummary[];
+    byCommission: CommissionBreakdown[];
   };
   imports: ImportSource[];
 }

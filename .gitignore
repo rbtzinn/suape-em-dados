@@ -15,11 +15,11 @@ coverage/
 
 # Dados institucionais recebidos (a pasta de código src/data é versionada)
 /data/
-uploads/
-private/
-pdfs/
-imports/
-generated-data/
+/uploads/
+/private/
+/pdfs/
+/imports/
+/generated-data/
 
 *.pdf
 *.xlsx

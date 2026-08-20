@@ -48,9 +48,9 @@ A planilha tem uma aba de orientação e 22 tabelas canônicas:
 
 O botão **Preparar abas canônicas** é idempotente: cria apenas abas ausentes e realinha os cabeçalhos sem limpar dados.
 
-## Importação LAI/Remessa
+## Importação LAI/Remessa e portarias
 
-Em `/admin/importacoes`, um usuário `ADMIN` ou `ANALYST` anexa um `.xlsx` e informa a competência. O fluxo:
+Em `/admin/importacoes`, um usuário `ADMIN` ou `ANALYST` anexa um `.xlsx` de LAI/Remessa ou um `.pdf` de portaria. A competência da portaria é inferida da vigência. O fluxo:
 
 1. calcula SHA-256 e bloqueia o mesmo arquivo em duplicidade;
 2. detecta automaticamente LAI ou Remessa;
@@ -59,6 +59,8 @@ Em `/admin/importacoes`, um usuário `ADMIN` ou `ANALYST` anexa um `.xlsx` e inf
 5. registra pendências de qualidade;
 6. publica o lote somente ao final;
 7. recalcula a conciliação Remessa × LAI, com execução e razões auditáveis.
+
+Para portarias, cada página é preservada integralmente, a composição efetiva é extraída e uma nova execução CPL × Remessa é acrescentada a `cpl_fiscal_matches`.
 
 ## Primeiro administrador
 

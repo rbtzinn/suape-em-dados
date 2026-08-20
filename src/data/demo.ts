@@ -141,6 +141,18 @@ export const demoSnapshot: SystemSnapshot = {
       },
     ],
   },
+  commissions: {
+    ordinances: 4,
+    members: 21,
+    presidents: 4,
+    matchedPeople: 8,
+    ok: 13,
+    attention: 15,
+    review: 26,
+    potentialConflict: 0,
+    examples: [],
+    byCommission: [],
+  },
   imports: [
     { name: "lista-instrumentos-consolidada.xlsx", competence: "Base Remessa", type: "Contratos", records: 194, state: "Pronto" },
     { name: "LAI — mapa de contratos", competence: "Junho/2026", type: "Contratos", records: 21, state: "Pronto" },
