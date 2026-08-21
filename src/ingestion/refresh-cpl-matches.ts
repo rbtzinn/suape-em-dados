@@ -15,7 +15,7 @@ import {
 } from "@/infra/google-sheets/repository";
 import { stableId } from "./common";
 
-const CHUNK_SIZE = 180;
+const CHUNK_SIZE = 400;
 
 function latestCompetence(rows: SheetRow[]): string {
   return rows.map((row) => row.competence).filter(Boolean).sort().at(-1) ?? "";

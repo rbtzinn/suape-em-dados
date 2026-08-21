@@ -9,8 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "password:hash": "node scripts/hash-password.mjs"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

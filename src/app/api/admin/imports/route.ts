@@ -7,7 +7,7 @@ import type { ImportModuleSelection } from "@/ingestion/types";
 import { sheetsRepository } from "@/infra/google-sheets/repository";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function originIsValid(request: Request): boolean {
   const origin = request.headers.get("origin");
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Origem da requisição não autorizada." }, { status: 403 });
   }
   if (!sheetsRepository.isConfigured()) {
-    return NextResponse.json({ message: "Configure a conta de serviço e a planilha canônica." }, { status: 409 });
+    return NextResponse.json({ message: "Configure a ponte do Apps Script e a planilha canônica." }, { status: 409 });
   }
 
   try {

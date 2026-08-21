@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
 
+import { FirebaseLoginForm } from "@/components/auth/firebase-login-form";
+
 export const metadata: Metadata = { title: "Acesso interno" };
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ erro?: string }>;
-}) {
-  const { erro } = await searchParams;
+export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-panel">
@@ -17,20 +14,9 @@ export default async function LoginPage({
         </div>
         <span className="eyebrow">Ambiente interno</span>
         <h1>Entrar no portal</h1>
-        <p>Use a credencial autorizada para consultar os dados institucionais.</p>
-        {erro && <div className="login-error">E-mail ou senha inválidos.</div>}
-        <form className="login-form" action="/api/auth/login" method="post">
-          <div className="field">
-            <label htmlFor="email">E-mail institucional</label>
-            <input id="email" name="email" type="email" autoComplete="username" required />
-          </div>
-          <div className="field">
-            <label htmlFor="password">Senha</label>
-            <input id="password" name="password" type="password" autoComplete="current-password" required minLength={8} />
-          </div>
-          <button className="button button-primary" type="submit">Acessar ambiente</button>
-        </form>
-        <p className="login-note">Não existe cadastro público. Acesso e perfis são administrados internamente.</p>
+        <p>Use uma conta cadastrada no Firebase e autorizada para consultar o portal.</p>
+        <FirebaseLoginForm />
+        <p className="login-note">Não existe cadastro público no portal. Usuários e papéis são liberados pelo administrador.</p>
       </section>
       <section className="login-visual" aria-label="Resumo do portal">
         <div className="visual-card">

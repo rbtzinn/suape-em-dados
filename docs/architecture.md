@@ -12,19 +12,21 @@ O Master Plan propunha um banco relacional. A solicitação mais recente definiu
 - `src/components`: apresentação reutilizável.
 - `src/domain`: regras puras, normalização e tipos.
 - `src/data`: montagem do snapshot usado pela interface.
-- `src/infra/google-sheets`: autenticação, schema e acesso à API.
+- `src/infra/google-sheets`: schema, repositório e ponte server-only do Apps Script.
 - `src/ingestion`: detecção, camada bruta, normalização, qualidade e conciliação pós-carga.
-- `src/auth`: sessão, senha e usuários autorizados.
+- `src/auth`: Firebase Auth, autorização por e-mail e sessão assinada do portal.
 
 ## Segurança
 
-- A chave privada da conta de serviço existe apenas em variável do servidor.
-- Não há cadastro público.
+- Não existe chave privada de conta de serviço no projeto ou na Vercel.
+- O Firebase autentica e-mail e senha pela API REST oficial; a Vercel valida a assinatura do token nas chaves públicas oficiais do Firebase.
+- Somente e-mails presentes nas listas `FIREBASE_*_EMAILS` recebem uma sessão, mesmo que alguém crie outra conta no projeto Firebase.
+- A autorização é revalidada em cada requisição; remover um e-mail da lista e publicar as variáveis novamente encerra o acesso, mesmo que ainda exista um cookie anterior.
 - Sessão assinada, `HttpOnly`, `SameSite=Strict` e `Secure` em produção.
 - Escritas administrativas verificam perfil e origem da requisição.
 - A interface não lista nomes ou CPFs da folha.
-- A planilha permanece privada; somente recortes permitidos chegam às páginas públicas.
-- `authorized_users` e `audit_log` são abas canônicas.
+- A planilha permanece privada; o Apps Script executa como o proprietário e aceita somente o segredo da Vercel e a ID fixada nas propriedades do script.
+- `audit_log` permanece como trilha canônica. A aba `authorized_users` é mantida por compatibilidade, mas senhas e papéis ativos ficam fora dela.
 
 ## Histórico e proveniência
 
@@ -34,4 +36,4 @@ Cada conciliação Remessa × LAI recebe `reconciliation_run_id`, competência, 
 
 ## Google Sheets e escala
 
-O repositório lê apenas as abas necessárias para o snapshot, agrupa chamadas e mantém cache curto de 60 segundos. A documentação oficial recomenda payload de até 2 MB e publica cotas por minuto; por isso a aplicação evita uma chamada por card ou por linha. Consulte os [limites oficiais da Sheets API](https://developers.google.com/workspace/sheets/api/limits).
+O repositório lê somente as abas necessárias, agrupa chamadas e mantém cache curto de 60 segundos. Escritas usam lotes de até 400 linhas, também limitados pelo tamanho serializado, e bloqueio no script para evitar concorrência acidental. A rota administrativa pode executar por até 300 segundos. O Apps Script possui cotas diárias e limite de 6 minutos por execução; por isso a aplicação evita uma chamada por card ou linha. Consulte as [cotas oficiais do Apps Script](https://developers.google.com/apps-script/guides/services/quotas) e os [limites das Vercel Functions](https://vercel.com/docs/functions/limitations).

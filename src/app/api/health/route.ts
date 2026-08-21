@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { isGoogleSheetsConfigured } from "@/infra/google-sheets/auth";
+import { isSheetsBridgeConfigured } from "@/infra/google-sheets/apps-script";
 
 export function GET() {
   return NextResponse.json({
     status: "ok",
     service: "suape-em-dados",
-    sheetsConfigured: isGoogleSheetsConfigured(),
+    sheetsConfigured: isSheetsBridgeConfigured(),
     timestamp: new Date().toISOString(),
   });
 }

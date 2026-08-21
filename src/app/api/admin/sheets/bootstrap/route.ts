@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   }
   if (!sheetsRepository.isConfigured()) {
     return NextResponse.json(
-      { message: "Configure GOOGLE_SHEETS_ID e a conta de serviço antes de preparar as abas." },
+      { message: "Configure a ponte privada do Apps Script antes de preparar as abas." },
       { status: 409 },
     );
   }

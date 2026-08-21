@@ -5,8 +5,8 @@
 - Leitura do Master Plan e mapeamento das sete fontes recebidas.
 - Fundação Next.js 16, React 19 e TypeScript estrito.
 - Design system institucional responsivo.
-- Autenticação interna sem cadastro público e perfis `ADMIN`, `ANALYST`, `VIEWER`.
-- Integração server-only com Google Sheets por conta de serviço.
+- Firebase Authentication com perfis `ADMIN`, `ANALYST`, `VIEWER` definidos por listas de e-mails.
+- Integração server-only com Google Sheets por ponte privada do Apps Script, sem conta de serviço.
 - Banco geral privado no Google Sheets com 22 tabelas, camada bruta, qualidade, proveniência e trilha de auditoria.
 - Painel executivo e módulos de contratos, fiscais, Remessa × LAI, terceirizados, folha, viagens, conformidade e importações.
 - Normalizadores de moeda/texto, conciliação explicável, folha por blocos e motor de política de viagens.
@@ -22,7 +22,8 @@
 
 - Revisar humanamente os 26 candidatos com nome parcial, campo genérico ou vigência insuficiente.
 - Incluir vínculos explícitos de processos/contratos quando novas portarias trouxerem essa informação.
-- Criar a conta de serviço, compartilhar a base, criar usuários reais e configurar os segredos na Vercel.
+- Ativar e-mail/senha no Firebase, criar os usuários reais e publicar a ponte do Apps Script.
+- Configurar as variáveis na Vercel e cadastrar o domínio publicado no Firebase.
 - Publicar a homologação e executar a revisão final de acesso e privacidade.
 
 ## Fora desta entrega

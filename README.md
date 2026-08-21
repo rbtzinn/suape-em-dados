@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Sem variáveis de ambiente, o portal abre em modo demonstração local. Com a conta de serviço configurada, lê a base canônica privada no Google Sheets e publica apenas os recortes permitidos.
+Sem variáveis de ambiente, o portal abre em modo demonstração local. Em produção, o login usa Firebase Authentication e o servidor acessa a base canônica privada por uma ponte autenticada do Google Apps Script, publicando apenas os recortes permitidos.
 
 ## Verificar
 

@@ -20,7 +20,7 @@ const PARSER_VERSION = "cpl-1.0.0";
 async function appendInChunks(
   sheet: CanonicalSheetName,
   rows: CanonicalWriteRow[],
-  chunkSize = 180,
+  chunkSize = 400,
 ): Promise<void> {
   for (let index = 0; index < rows.length; index += chunkSize) {
     await sheetsRepository.appendCanonicalRows(sheet, rows.slice(index, index + chunkSize));

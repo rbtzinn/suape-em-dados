@@ -45,10 +45,10 @@ export async function refreshContractReviews(): Promise<{
   }
 
   const reviews = reconcileContracts(lai, remessa, run);
-  for (let index = 0; index < reviews.length; index += 180) {
+  for (let index = 0; index < reviews.length; index += 400) {
     await sheetsRepository.appendCanonicalRows(
       "contract_reviews",
-      reviews.slice(index, index + 180),
+      reviews.slice(index, index + 400),
     );
   }
   return { runId: run.runId, rows: reviews.length, skipped: false };

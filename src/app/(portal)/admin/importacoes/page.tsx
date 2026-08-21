@@ -46,7 +46,7 @@ export default async function ImportsPage() {
       </Panel>
 
       <div className="content-grid equal">
-        <Panel title="Estrutura do Google Sheets" description="Abas protegidas pela conta de serviço">
+        <Panel title="Estrutura do Google Sheets" description="Abas acessadas somente pela ponte privada do Apps Script">
           <div className="sheet-schema">
             {CANONICAL_SHEET_NAMES.map((name) => <span className="schema-pill" key={name}>{name}</span>)}
           </div>

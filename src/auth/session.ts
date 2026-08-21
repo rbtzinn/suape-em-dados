@@ -3,6 +3,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
+import { firebaseRoleForEmail } from "@/auth/firebase-authorization";
 import type { Role } from "@/domain/types";
 
 export const SESSION_COOKIE = "suape_session";
@@ -78,7 +79,12 @@ function demoSession(): SessionUser | null {
 
 export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
-  return verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value) ?? demoSession();
+  const session = verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
+  if (session) {
+    const currentRole = firebaseRoleForEmail(session.email);
+    if (currentRole) return { ...session, role: currentRole };
+  }
+  return demoSession();
 }
 
 export function sessionCookieOptions() {

@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import type { Role } from "@/domain/types";
-import { getGoogleAccessToken, isGoogleSheetsConfigured } from "./auth";
+import { appsScriptRequest, isSheetsBridgeConfigured } from "./apps-script";
 import {
   CANONICAL_SHEETS,
   CANONICAL_SHEET_NAMES,
@@ -14,54 +14,13 @@ export type SheetRow = Record<string, string>;
 export type CanonicalWriteRow = Record<string, string | number | boolean>;
 export type CanonicalWorkbook = Partial<Record<CanonicalSheetName, SheetRow[]>>;
 
-interface SpreadsheetMetadata {
-  sheets?: Array<{ properties?: { title?: string } }>;
+interface ReadSelectedResult {
+  workbook: Partial<Record<CanonicalSheetName, string[][]>>;
 }
 
-interface BatchValuesResponse {
-  valueRanges?: Array<{ range?: string; values?: string[][] }>;
-}
-
-const workbookCache = new Map<
-  string,
-  { value: CanonicalWorkbook; expiresAt: number }
->();
-
-function columnLetter(columnCount: number): string {
-  let value = Math.max(1, columnCount);
-  let result = "";
-  while (value > 0) {
-    value -= 1;
-    result = String.fromCharCode(65 + (value % 26)) + result;
-    value = Math.floor(value / 26);
-  }
-  return result;
-}
-
-function spreadsheetId(): string {
-  const id = process.env.GOOGLE_SHEETS_ID;
-  if (!id) throw new Error("GOOGLE_SHEETS_ID não configurado.");
-  return id;
-}
-
-async function googleFetch(path: string, init?: RequestInit): Promise<Response> {
-  const token = await getGoogleAccessToken();
-  const response = await fetch(`https://sheets.googleapis.com/v4/${path}`, {
-    ...init,
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-      ...init?.headers,
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`Google Sheets respondeu ${response.status}: ${message.slice(0, 220)}`);
-  }
-  return response;
-}
+const workbookCache = new Map<string, { value: CanonicalWorkbook; expiresAt: number }>();
+const MAX_APPEND_ROWS = 400;
+const MAX_APPEND_BYTES = 1_500_000;
 
 function rowsFromValues(values: string[][] = []): SheetRow[] {
   const [headers = [], ...rows] = values;
@@ -74,7 +33,7 @@ function rowsFromValues(values: string[][] = []): SheetRow[] {
 
 export class GoogleSheetsRepository {
   isConfigured(): boolean {
-    return isGoogleSheetsConfigured();
+    return isSheetsBridgeConfigured();
   }
 
   async readSelected(
@@ -83,25 +42,13 @@ export class GoogleSheetsRepository {
   ): Promise<CanonicalWorkbook> {
     const key = [...names].sort().join(",");
     const cached = workbookCache.get(key);
-    if (!force && cached && cached.expiresAt > Date.now()) {
-      return cached.value;
-    }
+    if (!force && cached && cached.expiresAt > Date.now()) return cached.value;
 
-    const params = new URLSearchParams();
-    for (const name of names) {
-      params.append("ranges", `${name}!A:${columnLetter(CANONICAL_SHEETS[name].length)}`);
-    }
-    params.set("majorDimension", "ROWS");
-    const response = await googleFetch(
-      `spreadsheets/${spreadsheetId()}/values:batchGet?${params.toString()}`,
-    );
-    const payload = (await response.json()) as BatchValuesResponse;
+    const payload = await appsScriptRequest<ReadSelectedResult>("readSelected", { names });
     const workbook: CanonicalWorkbook = {};
-
-    names.forEach((name, index) => {
-      workbook[name] = rowsFromValues(payload.valueRanges?.[index]?.values);
+    names.forEach((name) => {
+      workbook[name] = rowsFromValues(payload.workbook[name]);
     });
-
     workbookCache.set(key, { value: workbook, expiresAt: Date.now() + 60_000 });
     return workbook;
   }
@@ -114,22 +61,30 @@ export class GoogleSheetsRepository {
     return (await this.readSelected([name]))[name] ?? [];
   }
 
-  async appendRows(name: CanonicalSheetName, rows: Array<Array<string | number | boolean>>): Promise<void> {
+  async appendRows(
+    name: CanonicalSheetName,
+    rows: Array<Array<string | number | boolean>>,
+  ): Promise<void> {
     if (rows.length === 0) return;
-    const lastColumn = columnLetter(CANONICAL_SHEETS[name].length);
-    await googleFetch(
-      `spreadsheets/${spreadsheetId()}/values/${encodeURIComponent(`${name}!A:${lastColumn}`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-      { method: "POST", body: JSON.stringify({ values: rows }) },
-    );
+    let batch: Array<Array<string | number | boolean>> = [];
+    let bytes = 0;
+    for (const row of rows) {
+      const rowBytes = Buffer.byteLength(JSON.stringify(row), "utf8");
+      if (batch.length && (batch.length >= MAX_APPEND_ROWS || bytes + rowBytes > MAX_APPEND_BYTES)) {
+        await appsScriptRequest("appendRows", { name, rows: batch });
+        batch = [];
+        bytes = 0;
+      }
+      batch.push(row);
+      bytes += rowBytes;
+    }
+    if (batch.length) await appsScriptRequest("appendRows", { name, rows: batch });
     workbookCache.clear();
   }
 
   async appendCanonicalRows(name: CanonicalSheetName, rows: CanonicalWriteRow[]): Promise<void> {
     const headers = CANONICAL_SHEETS[name];
-    await this.appendRows(
-      name,
-      rows.map((row) => headers.map((header) => row[header] ?? "")),
-    );
+    await this.appendRows(name, rows.map((row) => headers.map((header) => row[header] ?? "")));
   }
 
   async hasSourceHash(sourceHash: string): Promise<boolean> {
@@ -146,52 +101,28 @@ export class GoogleSheetsRepository {
     const rows = await this.readRows("import_batches");
     const index = rows.findIndex((row) => row.batch_id === batchId);
     if (index < 0) throw new Error(`Lote ${batchId} não encontrado.`);
-
     const headers = CANONICAL_SHEETS.import_batches;
     const updated: SheetRow = { ...rows[index], ...updates };
-    const sheetRow = index + 2;
-    const lastColumn = columnLetter(headers.length);
-    await googleFetch(
-      `spreadsheets/${spreadsheetId()}/values/${encodeURIComponent(`import_batches!A${sheetRow}:${lastColumn}${sheetRow}`)}?valueInputOption=RAW`,
-      {
-        method: "PUT",
-        body: JSON.stringify({ values: [headers.map((header) => updated[header] ?? "")] }),
-      },
-    );
+    await appsScriptRequest("updateRow", {
+      name: "import_batches",
+      rowNumber: index + 2,
+      values: headers.map((header) => updated[header] ?? ""),
+    });
     workbookCache.clear();
   }
 
   async ensureCanonicalSchema(): Promise<{ created: string[]; existing: string[] }> {
-    const metadataResponse = await googleFetch(
-      `spreadsheets/${spreadsheetId()}?fields=sheets.properties.title`,
+    const result = await appsScriptRequest<{ created: string[]; existing: string[] }>(
+      "ensureSchema",
+      {
+        sheets: CANONICAL_SHEET_NAMES.map((name) => ({
+          name,
+          headers: [...CANONICAL_SHEETS[name]],
+        })),
+      },
     );
-    const metadata = (await metadataResponse.json()) as SpreadsheetMetadata;
-    const existingTitles = new Set(
-      metadata.sheets?.flatMap((sheet) => (sheet.properties?.title ? [sheet.properties.title] : [])),
-    );
-    const created = CANONICAL_SHEET_NAMES.filter((name) => !existingTitles.has(name));
-    const existing = CANONICAL_SHEET_NAMES.filter((name) => existingTitles.has(name));
-
-    if (created.length > 0) {
-      await googleFetch(`spreadsheets/${spreadsheetId()}:batchUpdate`, {
-        method: "POST",
-        body: JSON.stringify({
-          requests: created.map((title) => ({ addSheet: { properties: { title } } })),
-        }),
-      });
-    }
-
-    const headerUpdates = CANONICAL_SHEET_NAMES.map((name) => ({
-      range: `${name}!A1:${columnLetter(CANONICAL_SHEETS[name].length)}1`,
-      majorDimension: "ROWS",
-      values: [[...CANONICAL_SHEETS[name]]],
-    }));
-    await googleFetch(`spreadsheets/${spreadsheetId()}/values:batchUpdate`, {
-      method: "POST",
-      body: JSON.stringify({ valueInputOption: "RAW", data: headerUpdates }),
-    });
     workbookCache.clear();
-    return { created, existing };
+    return result;
   }
 
   async appendAuditEvent(event: {
@@ -202,18 +133,16 @@ export class GoogleSheetsRepository {
     entityId?: string;
     details?: unknown;
   }): Promise<void> {
-    await this.appendRows("audit_log", [
-      [
-        randomUUID(),
-        new Date().toISOString(),
-        event.actorEmail,
-        event.actorRole,
-        event.action,
-        event.entityType,
-        event.entityId ?? "",
-        JSON.stringify(event.details ?? {}),
-      ],
-    ]);
+    await this.appendRows("audit_log", [[
+      randomUUID(),
+      new Date().toISOString(),
+      event.actorEmail,
+      event.actorRole,
+      event.action,
+      event.entityType,
+      event.entityId ?? "",
+      JSON.stringify(event.details ?? {}),
+    ]]);
   }
 }
 
