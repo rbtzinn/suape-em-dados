@@ -38,12 +38,30 @@ export function rowHash(row: SourceRow): string {
   return sha256(safeJson({ sheet: row.sheetName, row: row.rowNumber, values: row.values }));
 }
 
+const MONTHS: Record<string, string> = {
+  jan: "01", janeiro: "01", fev: "02", fevereiro: "02", mar: "03", marco: "03",
+  abr: "04", abril: "04", mai: "05", maio: "05", jun: "06", junho: "06",
+  jul: "07", julho: "07", ago: "08", agosto: "08", set: "09", setembro: "09",
+  out: "10", outubro: "10", nov: "11", novembro: "11", dez: "12", dezembro: "12",
+};
+
+export function competenceForSheet(sheetName: string, fallback: string): string {
+  const normalized = normalizedHeader(sheetName);
+  const monthEntry = Object.entries(MONTHS).find(([label]) =>
+    new RegExp(`(^| )${label}($| )`).test(normalized),
+  );
+  const year = normalized.match(/\b(20\d{2})\b/)?.[1]
+    ?? normalized.match(/(?:^|[ ._-])(\d{2})(?:$|[ ._-])/)?.[1];
+  if (!monthEntry || !year) return fallback;
+  return `${year.length === 2 ? `20${year}` : year}-${monthEntry[1]}`;
+}
+
 export function provenance(row: SourceRow, context: ParseContext) {
   const sourceHash = rowHash(row);
   const rawRecordId = stableId("raw", context.sourceFileHash, row.sheetName, row.rowNumber);
   const rawJson = safeJson(row.values);
   return {
-    competence: context.competence,
+    competence: competenceForSheet(row.sheetName, context.competence),
     source_file: context.sourceFile,
     source_sheet: row.sheetName,
     source_row: row.rowNumber,

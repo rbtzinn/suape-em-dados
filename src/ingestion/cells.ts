@@ -20,9 +20,17 @@ function jsonSafe(value: unknown): unknown {
 function displayedCellValue(cell: Cell): string {
   if (cell.value instanceof Date) return cell.value.toISOString().slice(0, 10);
   if (typeof cell.value === "object" && cell.value && "result" in cell.value) {
-    return String((cell.value as { result?: unknown }).result ?? cell.text ?? "").trim();
+    try {
+      return String((cell.value as { result?: unknown }).result ?? cell.text ?? "").trim();
+    } catch {
+      return String((cell.value as { result?: unknown }).result ?? "").trim();
+    }
   }
-  return String(cell.text ?? cell.value ?? "").trim();
+  try {
+    return String(cell.text ?? cell.value ?? "").trim();
+  } catch {
+    return String(cell.value ?? "").trim();
+  }
 }
 
 export function uniqueHeaders(values: string[]): string[] {

@@ -21,7 +21,7 @@ function originIsValid(request: Request): boolean {
 
 function selectedModule(value: FormDataEntryValue | null): ImportModuleSelection | null {
   const sourceModule = String(value ?? "AUTO").toUpperCase();
-  return ["AUTO", "LAI", "REMESSA", "CPL"].includes(sourceModule)
+  return ["AUTO", "LAI", "REMESSA", "OUTSOURCED", "PAYROLL", "TRAVEL", "CPL"].includes(sourceModule)
     ? (sourceModule as ImportModuleSelection)
     : null;
 }

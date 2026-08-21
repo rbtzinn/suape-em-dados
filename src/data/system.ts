@@ -12,7 +12,14 @@ import type { SystemSnapshot } from "@/domain/types";
 import { sheetsRepository } from "@/infra/google-sheets/repository";
 
 async function loadSystemSnapshot(): Promise<SystemSnapshot> {
-  if (!sheetsRepository.isConfigured()) return demoSnapshot;
+  if (!sheetsRepository.isConfigured()) {
+    if (process.env.DEMO_MODE === "true") return demoSnapshot;
+    return emptySnapshot({
+      mode: "degraded",
+      updatedAt: "Google Sheets não configurado",
+      notice: "O portal não exibirá dados de demonstração. Configure a integração oficial.",
+    });
+  }
 
   try {
     const workbook = await sheetsRepository.readSelected(SNAPSHOT_SHEETS);

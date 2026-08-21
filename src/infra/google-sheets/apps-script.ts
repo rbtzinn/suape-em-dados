@@ -7,7 +7,7 @@ interface BridgeEnvelope<T> {
 }
 
 function bridgeUrl(): string {
-  const value = process.env.GOOGLE_APPS_SCRIPT_URL;
+  const value = process.env.GOOGLE_APPS_SCRIPT_URL?.trim();
   if (!value) throw new Error("GOOGLE_APPS_SCRIPT_URL não configurada.");
   const url = new URL(value);
   if (url.protocol !== "https:" || url.hostname !== "script.google.com" || !url.pathname.startsWith("/macros/s/")) {
@@ -28,8 +28,8 @@ export async function appsScriptRequest<T>(
   action: string,
   data: Record<string, unknown> = {},
 ): Promise<T> {
-  const secret = process.env.GOOGLE_APPS_SCRIPT_SECRET;
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const secret = process.env.GOOGLE_APPS_SCRIPT_SECRET?.trim();
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID?.trim();
   if (!secret || !spreadsheetId) throw new Error("Ponte do Google Sheets não configurada.");
 
   const response = await fetch(bridgeUrl(), {
@@ -48,7 +48,11 @@ export async function appsScriptRequest<T>(
     throw new Error(`Apps Script respondeu em formato inválido (${response.status}).`);
   }
   if (!response.ok || !payload.ok || payload.result === undefined) {
-    throw new Error(`Apps Script: ${String(payload.error || response.status).slice(0, 220)}`);
+    const detail = String(payload.error || response.status).slice(0, 220);
+    if (detail.includes("Acesso não autorizado")) {
+      throw new Error("Apps Script: API_SECRET não coincide com GOOGLE_APPS_SCRIPT_SECRET. Salve a propriedade e publique uma nova versão /exec.");
+    }
+    throw new Error(`Apps Script: ${detail}`);
   }
   return payload.result;
 }

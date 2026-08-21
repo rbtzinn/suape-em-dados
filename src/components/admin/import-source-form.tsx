@@ -52,6 +52,9 @@ export function ImportSourceForm() {
             <option value="AUTO">Detectar automaticamente</option>
             <option value="LAI">LAI — contratos</option>
             <option value="REMESSA">Remessa TCE</option>
+            <option value="OUTSOURCED">Contratos terceirizados</option>
+            <option value="PAYROLL">Folha de pagamento</option>
+            <option value="TRAVEL">Viagens e diárias</option>
             <option value="CPL">Portaria — CPL/comissão</option>
           </select>
         </div>
@@ -69,7 +72,7 @@ export function ImportSourceForm() {
           <Icon name="database" />
           {state === "loading" ? "Lendo a fonte integralmente…" : "Importar para a base geral"}
         </button>
-        <p>A competência é obrigatória para LAI/Remessa e inferida da vigência em portarias. O mesmo SHA-256 não duplica dados.</p>
+        <p>A competência é obrigatória para planilhas e inferida da vigência em portarias. O site calcula o SHA-256 e impede cargas repetidas.</p>
       </div>
       {result?.message && (
         <div className={`import-result action-${state}`} role="status">

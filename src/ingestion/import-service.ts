@@ -1,17 +1,18 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
-
 import { safeJson } from "@/domain/normalization";
 import {
   sheetsRepository,
   type CanonicalWriteRow,
 } from "@/infra/google-sheets/repository";
 import type { CanonicalSheetName } from "@/infra/google-sheets/schema";
-import { rowHash, sha256, stableId } from "./common";
+import { competenceForSheet, rowHash, sha256, stableId } from "./common";
 import { extractWorkbook } from "./parse-workbook";
 import { parseLai } from "./parsers/lai";
+import { parseOutsourced } from "./parsers/outsourced";
+import { parsePayroll } from "./parsers/payroll";
 import { parseRemessa } from "./parsers/remessa";
+import { parseTravel } from "./parsers/travel";
 import { refreshContractReviews } from "./refresh-contract-reviews";
 import type { ImportRequest, ImportSummary, ParseContext } from "./types";
 
@@ -22,11 +23,27 @@ const PARSER_VERSION = "1.0.0";
 async function appendInChunks(
   sheet: CanonicalSheetName,
   rows: CanonicalWriteRow[],
+  dedupe = false,
   chunkSize = 400,
 ): Promise<void> {
   for (let index = 0; index < rows.length; index += chunkSize) {
-    await sheetsRepository.appendCanonicalRows(sheet, rows.slice(index, index + chunkSize));
+    await sheetsRepository.appendCanonicalRows(
+      sheet,
+      rows.slice(index, index + chunkSize),
+      { dedupe },
+    );
   }
+}
+
+function parseExtraction(
+  extraction: Awaited<ReturnType<typeof extractWorkbook>>,
+  context: ParseContext,
+) {
+  if (extraction.module === "REMESSA") return parseRemessa(extraction.sheets, context);
+  if (extraction.module === "LAI") return parseLai(extraction.sheets, context);
+  if (extraction.module === "OUTSOURCED") return parseOutsourced(extraction.sheets, context);
+  if (extraction.module === "PAYROLL") return parsePayroll(extraction.sheets, context);
+  return parseTravel(extraction.sheets, context);
 }
 
 function rawLayer(context: ParseContext, extraction: Awaited<ReturnType<typeof extractWorkbook>>) {
@@ -67,7 +84,7 @@ function rawLayer(context: ParseContext, extraction: Awaited<ReturnType<typeof e
         raw_record_id: rawRecordId,
         import_batch_id: context.batchId,
         module: extraction.module,
-        competence: context.competence,
+        competence: competenceForSheet(row.sheetName, context.competence),
         source_file: context.sourceFile,
         source_sheet: row.sheetName,
         source_row: row.rowNumber,
@@ -100,11 +117,13 @@ export async function importWorkbook(request: ImportRequest): Promise<ImportSumm
   }
   const sourceHash = sha256(request.bytes);
   await sheetsRepository.ensureCanonicalSchema();
-  if (await sheetsRepository.hasSourceHash(sourceHash)) {
+  const existingBatch = await sheetsRepository.findImportBatchBySourceHash(sourceHash);
+  if (existingBatch && ["STAGING", "PUBLISHED"].includes(existingBatch.status)) {
     throw new Error("Este mesmo arquivo já foi importado ou está em processamento.");
   }
 
-  const batchId = randomUUID();
+  const retry = existingBatch?.status === "FAILED";
+  const batchId = retry ? existingBatch.batch_id : stableId("batch", sourceHash);
   const importedAt = new Date().toISOString();
   const sourceFileId = stableId("file", sourceHash);
   const extraction = await extractWorkbook(request.bytes, request.module);
@@ -119,48 +138,55 @@ export async function importWorkbook(request: ImportRequest): Promise<ImportSumm
   if (raw.records.length > MAX_RAW_ROWS) {
     throw new Error(`O arquivo excede o limite de ${MAX_RAW_ROWS} linhas não vazias por carga.`);
   }
-  const normalized = extraction.module === "REMESSA"
-    ? parseRemessa(extraction.sheets, context)
-    : parseLai(extraction.sheets, context);
+  const normalized = parseExtraction(extraction, context);
 
   let batchCreated = false;
   let batchPublished = false;
   let reconciliation: ImportSummary["reconciliation"];
   try {
-    await appendInChunks("source_files", [{
-      source_file_id: sourceFileId,
-      file_name: request.fileName,
-      mime_type: request.mimeType,
-      size_bytes: request.bytes.length,
-      source_sha256: sourceHash,
-      drive_url: request.driveUrl ?? "",
-      received_at: importedAt,
-      received_by: request.actorEmail,
-      status: "RECEIVED",
-      notes: "O arquivo não é salvo no Git; todas as células não vazias são preservadas na camada bruta.",
-    }]);
-    await appendInChunks("import_batches", [{
-      batch_id: batchId,
-      source_file_id: sourceFileId,
-      source_file: request.fileName,
-      source_hash: sourceHash,
-      competence: request.competence,
-      module: extraction.module,
-      status: "STAGING",
-      record_count: 0,
-      raw_record_count: raw.records.length,
-      parser_version: PARSER_VERSION,
-      imported_at: importedAt,
-      imported_by: request.actorEmail,
-      notes: "Carga iniciada; publicação ocorre somente após todas as camadas serem gravadas.",
-    }]);
+    if (retry) {
+      await sheetsRepository.updateImportBatch(batchId, {
+        status: "STAGING",
+        record_count: "0",
+        raw_record_count: String(raw.records.length),
+        notes: "Nova tentativa iniciada com deduplicação por identificador estável.",
+      });
+    } else {
+      await appendInChunks("source_files", [{
+        source_file_id: sourceFileId,
+        file_name: request.fileName,
+        mime_type: request.mimeType,
+        size_bytes: request.bytes.length,
+        source_sha256: sourceHash,
+        drive_url: request.driveUrl ?? "",
+        received_at: importedAt,
+        received_by: request.actorEmail,
+        status: "RECEIVED",
+        notes: "O arquivo não é salvo no Git; todas as células não vazias são preservadas na camada bruta.",
+      }]);
+      await appendInChunks("import_batches", [{
+        batch_id: batchId,
+        source_file_id: sourceFileId,
+        source_file: request.fileName,
+        source_hash: sourceHash,
+        competence: request.competence,
+        module: extraction.module,
+        status: "STAGING",
+        record_count: 0,
+        raw_record_count: raw.records.length,
+        parser_version: PARSER_VERSION,
+        imported_at: importedAt,
+        imported_by: request.actorEmail,
+        notes: "Carga iniciada; publicação ocorre somente após todas as camadas serem gravadas.",
+      }]);
+    }
     batchCreated = true;
 
-    await appendInChunks("source_schemas", raw.schemas);
-    await appendInChunks("raw_records", raw.records);
-    await appendInChunks("raw_record_chunks", raw.chunks);
-    await appendInChunks(normalized.target, normalized.rows);
-    await appendInChunks("data_quality_issues", normalized.issues);
+    await appendInChunks("source_schemas", raw.schemas, retry);
+    await appendInChunks("raw_records", raw.records, retry);
+    await appendInChunks("raw_record_chunks", raw.chunks, retry);
+    await appendInChunks(normalized.target, normalized.rows, retry);
+    await appendInChunks("data_quality_issues", normalized.issues, retry);
     await sheetsRepository.updateImportBatch(batchId, {
       status: "PUBLISHED",
       record_count: String(normalized.rows.length),

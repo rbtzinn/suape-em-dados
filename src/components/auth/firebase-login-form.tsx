@@ -2,22 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-async function firebaseIdToken(email: string, password: string): Promise<string> {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!apiKey) throw new Error("Firebase API key não configurada.");
-  const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
-    },
-  );
-  const payload = (await response.json()) as { idToken?: string };
-  if (!response.ok || !payload.idToken) throw new Error("Credencial Firebase inválida.");
-  return payload.idToken;
-}
+import { firebaseIdToken } from "@/auth/firebase-rest-client";
 
 export function FirebaseLoginForm() {
   const router = useRouter();
@@ -39,11 +24,12 @@ export function FirebaseLoginForm() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ idToken }),
       });
-      if (!response.ok) throw new Error("Acesso não autorizado para este e-mail.");
+      const payload = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(payload.message ?? "Sessão não autorizada.");
       router.replace("/");
       router.refresh();
-    } catch {
-      setError("E-mail ou senha inválidos, ou usuário sem autorização no portal.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível entrar.");
       setLoading(false);
     }
   }

@@ -64,6 +64,7 @@ export class GoogleSheetsRepository {
   async appendRows(
     name: CanonicalSheetName,
     rows: Array<Array<string | number | boolean>>,
+    options: { dedupe?: boolean } = {},
   ): Promise<void> {
     if (rows.length === 0) return;
     let batch: Array<Array<string | number | boolean>> = [];
@@ -71,27 +72,38 @@ export class GoogleSheetsRepository {
     for (const row of rows) {
       const rowBytes = Buffer.byteLength(JSON.stringify(row), "utf8");
       if (batch.length && (batch.length >= MAX_APPEND_ROWS || bytes + rowBytes > MAX_APPEND_BYTES)) {
-        await appsScriptRequest("appendRows", { name, rows: batch });
+        await appsScriptRequest("appendRows", { name, rows: batch, dedupe: options.dedupe === true });
         batch = [];
         bytes = 0;
       }
       batch.push(row);
       bytes += rowBytes;
     }
-    if (batch.length) await appsScriptRequest("appendRows", { name, rows: batch });
+    if (batch.length) await appsScriptRequest("appendRows", { name, rows: batch, dedupe: options.dedupe === true });
     workbookCache.clear();
   }
 
-  async appendCanonicalRows(name: CanonicalSheetName, rows: CanonicalWriteRow[]): Promise<void> {
+  async appendCanonicalRows(
+    name: CanonicalSheetName,
+    rows: CanonicalWriteRow[],
+    options: { dedupe?: boolean } = {},
+  ): Promise<void> {
     const headers = CANONICAL_SHEETS[name];
-    await this.appendRows(name, rows.map((row) => headers.map((header) => row[header] ?? "")));
+    await this.appendRows(
+      name,
+      rows.map((row) => headers.map((header) => row[header] ?? "")),
+      options,
+    );
+  }
+
+  async findImportBatchBySourceHash(sourceHash: string): Promise<SheetRow | null> {
+    const batches = await this.readRows("import_batches");
+    return batches.find((row) => row.source_hash === sourceHash) ?? null;
   }
 
   async hasSourceHash(sourceHash: string): Promise<boolean> {
-    const batches = await this.readRows("import_batches");
-    return batches.some(
-      (row) => row.source_hash === sourceHash && ["STAGING", "PUBLISHED"].includes(row.status),
-    );
+    const batch = await this.findImportBatchBySourceHash(sourceHash);
+    return Boolean(batch && ["STAGING", "PUBLISHED"].includes(batch.status));
   }
 
   async updateImportBatch(

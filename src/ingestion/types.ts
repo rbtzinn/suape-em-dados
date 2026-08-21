@@ -1,7 +1,7 @@
 import type { CanonicalSheetName } from "@/infra/google-sheets/schema";
 import type { CanonicalWriteRow } from "@/infra/google-sheets/repository";
 
-export type WorkbookImportModule = "REMESSA" | "LAI";
+export type WorkbookImportModule = "REMESSA" | "LAI" | "OUTSOURCED" | "PAYROLL" | "TRAVEL";
 export type ImportModule = WorkbookImportModule | "CPL";
 export type ImportModuleSelection = ImportModule | "AUTO";
 

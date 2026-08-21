@@ -27,6 +27,6 @@ Consulte [docs/google-sheets-setup.md](docs/google-sheets-setup.md). A arquitetu
 
 Os arquivos institucionais de origem não devem ser incluídos neste repositório.
 
-O importador administrativo aceita planilhas LAI/Remessa em `.xlsx` e portarias de comissões em `.pdf`. As cargas preservam a fonte bruta, acrescentam histórico e geram cruzamentos explicáveis sem transformar coincidência nominal em irregularidade.
+O importador administrativo aceita LAI/contratos, Remessa, terceirizados, folha e viagens em `.xlsx`, além de portarias de comissões em `.pdf`. As cargas preservam a fonte bruta, bloqueiam arquivos repetidos, acrescentam histórico e geram cruzamentos explicáveis sem transformar coincidência nominal em irregularidade.
 
-Base canônica: [SUAPE em Dados — Banco Geral](https://docs.google.com/spreadsheets/d/1qZvVOKVQ4yYB0q50HaCFW0f6l08Sy_7uaTXLLstoiYg/edit). O arquivo é privado; o link não concede acesso.
+A base canônica é uma planilha privada configurada somente pelas variáveis de ambiente da implantação.
